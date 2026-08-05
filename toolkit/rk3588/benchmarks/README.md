@@ -2,13 +2,13 @@
 
 High-performance benchmarking suite for Rockchip RK3588 SoC.
 
-## Tools
+## Tools Overview
 
 ### 1. Disk Speed Benchmark (`disk-speed/`)
 
-Comprehensive disk I/O performance testing tool.
-
 **Language:** C (optimized for performance)
+
+Comprehensive disk I/O performance testing tool with sequential read/write operations.
 
 **Features:**
 - Sequential read/write performance
@@ -47,18 +47,109 @@ Sequential Read Results:
   Max Speed:       215.32 MB/s
 ```
 
-### 2. CPU/GPU Benchmark (`cpu-gpu-bench/`)
+### 2. Random I/O Benchmark (`random-io/`)
 
-Comprehensive CPU and GPU performance testing.
+**Language:** C (optimized for I/O operations)
+
+Random access I/O performance testing with pseudo-random seek patterns.
+
+**Features:**
+- Random read/write IOPS measurement
+- Latency per operation
+- Read/write ratio analysis
+- Pre-allocated file for consistent testing
+
+**Building:**
+```bash
+cd random-io
+make
+```
+
+**Usage:**
+```bash
+./random_io_bench                    # Default: /tmp/random_io_test.bin
+./random_io_bench /custom/path       # Custom file path
+```
+
+**Output Example:**
+```
+Random Write:
+  IOPS:            2500.45
+  Latency:         0.400 ms
+  Total Time:      4.000 sec
+
+Random Read:
+  IOPS:            5600.30
+  Latency:         0.179 ms
+  Total Time:      1.786 sec
+
+I/O Performance Summary:
+  Read/Write Ratio: 2.24x
+  Write Latency:    0.400 ms
+  Read Latency:     0.179 ms
+```
+
+### 3. Memory Bandwidth Benchmark (`memory-bench/`)
+
+**Language:** C (optimized SIMD operations)
+
+Comprehensive memory hierarchy performance testing.
+
+**Features:**
+- Sequential read performance
+- Random access patterns
+- Memcpy performance
+- Memory latency analysis
+- L1/L2 cache characterization
+
+**Building:**
+```bash
+cd memory-bench
+make
+```
+
+**Usage:**
+```bash
+./memory_bench              # Default: 64MB test
+./memory_bench 256          # 256MB test
+./memory_bench 1024         # 1GB test
+```
+
+**Output Example:**
+```
+Sequential Read:
+  Bandwidth:       18.45 GB/s
+  Latency:         5.42 ns
+  Duration:        0.347 sec
+
+Random Access:
+  Bandwidth:       8.12 GB/s
+  Latency:         12.31 ns
+  Duration:        0.787 sec
+
+Memcpy:
+  Bandwidth:       22.67 GB/s
+  Latency:         0.00 ns
+  Duration:        0.281 sec
+
+Memory Hierarchy Analysis:
+  L1/L2 Cache Latency:  ~12.31 ns
+  Sequential vs Random: 2.27x degradation
+```
+
+### 4. CPU/GPU Benchmark (`cpu-gpu-bench/`)
 
 **Language:** C++ (optimized SIMD/NEON)
+
+Comprehensive CPU and GPU performance testing with multi-core analysis.
 
 **Features:**
 - FP64 scalar performance
 - NEON SIMD optimization
 - OpenMP parallel performance
-- GPU capability detection
 - Multi-core speedup metrics
+- GPU capability detection
+- Thermal considerations
 
 **Building:**
 ```bash
@@ -94,17 +185,87 @@ GPU Information:
   Note:            GPU benchmarking requires Mali GPU libraries
 ```
 
+## Benchmark Workflow
+
+### Complete Performance Profile
+```bash
+# System information
+../hardware/sysinfo.sh
+
+# Memory test
+memory-bench/memory_bench
+
+# CPU test
+cpu-gpu-bench/cpu_gpu_bench
+
+# Disk sequential
+disk-speed/disk_bench
+
+# Disk random
+random-io/random_io_bench
+
+# Thermal baseline
+../hardware/thermal_monitor.sh snapshot
+```
+
+### Storage Analysis
+```bash
+# Test on specific storage
+disk-speed/disk_bench /mnt/ssd 512    # SSD with 512KB blocks
+disk-speed/disk_bench /mnt/emmc 1024  # eMMC with 1MB blocks
+random-io/random_io_bench /mnt/ssd
+```
+
+### Load Testing
+```bash
+# Stress during benchmarking
+# Terminal 1: Start stress test
+../utils/stress_test cpu 120
+
+# Terminal 2: Run benchmarks during load
+memory-bench/memory_bench 256
+cpu-gpu-bench/cpu_gpu_bench
+disk-speed/disk_bench
+
+# Monitor thermal in Terminal 3
+../hardware/thermal_monitor.sh watch
+```
+
+## Performance Interpretation
+
+### Disk Performance
+- **Sequential MB/s**: Affected by interface (SD, eMMC, USB, NVMe)
+- **Random IOPS**: Affected by filesystem, storage type, queue depth
+- **Typical Orange Pi 5+ eMMC**: 100-200 MB/s seq, 2000-3000 IOPS random
+
+### Memory Performance
+- **Sequential Bandwidth**: ~15-20 GB/s on LPDDR4/5
+- **Random Access Latency**: ~5-10ns L1, ~50-100ns L3
+- **Memcpy**: Often hardware-limited by bus
+
+### CPU Performance
+- **Scalar FP64**: 2-5 GFLOPS per core
+- **SIMD Boost**: 3-4x improvement with NEON
+- **Multi-core Scaling**: 6-8x with 8 cores (diminishing returns)
+
+### GPU Performance
+- **Mali-G610**: ~2.16 TFLOPS FP32 peak
+- **Actual Workload**: 30-60% peak depending on algorithm
+
 ## Optimization Notes
 
 - All tools compiled with `-O3 -march=native` for maximum performance
-- Disk tool uses raw system calls for minimal overhead
-- CPU tool uses NEON intrinsics and OpenMP for parallelization
-- Results vary based on thermal conditions and system load
+- NEON intrinsics used where applicable for SIMD
+- OpenMP pragmas for automatic parallelization
+- Memory tests designed to stress L1/L2/L3 hierarchy
+- Disk tests minimize filesystem caching interference
 
 ## Future Enhancements
 
-- Memory bandwidth benchmarking
 - GPU vendor library integration (Mali, Panfrost)
-- Real-time result logging
+- Real-time result logging to CSV
 - Comparative analysis tools
 - Thermal throttling detection
+- Network bandwidth testing
+- AI/ML workload benchmarks
+- Power consumption correlation
